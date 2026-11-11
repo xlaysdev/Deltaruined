@@ -30,6 +30,27 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Extract Roaring Knight sprite pack
+        run: |
+          mkdir -p /tmp/knight-pack app/src/main/assets/roaring_knight
+          unzip -oq Deltaruined_Roaring_Knight_Full_Spritepack.zip -d /tmp/knight-pack
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil, json
+          source = Path("/tmp/knight-pack")
+          target = Path("app/src/main/assets/roaring_knight")
+          files = sorted((p for p in source.rglob("*") if p.is_file() and p.suffix.lower() == ".png"), key=lambda p: str(p).lower())
+          if not files:
+              raise SystemExit("Sprite ZIP contains no PNG files")
+          index = []
+          for number, path in enumerate(files):
+              name = f"frame_{number:04d}_{path.name}"
+              shutil.copy2(path, target / name)
+              index.append({"file": name, "source": str(path.relative_to(source))})
+          (target / "index.json").write_text(json.dumps(index, indent=2))
+          print(f"Extracted {len(files)} PNG sprites")
+          PY
+
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
 
