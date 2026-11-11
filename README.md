@@ -9,6 +9,7 @@ A fan-made, mobile-first pixel RPG boss-rush prototype inspired by bullet-dodgin
 - Jevil, The Knight, King and Spamton NEO boss encounters
 - Fight, Act, Item and Spare battle actions
 - HP, boss HP, attack phases, hit detection, victory and defeat states
+- Hand-authored 16x16 pixel-art sprites for Jevil, The Knight, King, Spamton NEO and the player soul
 - Boss selection and replay
 - GitHub Actions debug APK build on every push and pull request
 
