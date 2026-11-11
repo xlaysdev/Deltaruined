@@ -95,6 +95,14 @@ jobs:
           if len(files) != 485:
               print(f"NOTE: expected 485 reviewed frames; archive contains {len(files)}")
           PY
+      - name: Upload all extracted PNG assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: roaring-knight-png-assets
+          path: app/src/main/assets/roaring_knight/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload sprite contact sheets
         uses: actions/upload-artifact@v4
         with:
