@@ -36,19 +36,39 @@ jobs:
           unzip -oq Deltaruined_Roaring_Knight_Full_Spritepack.zip -d /tmp/knight-pack
           python3 - <<'PY'
           from pathlib import Path
-          import shutil, json
+          import shutil, json, re
           source = Path("/tmp/knight-pack")
           target = Path("app/src/main/assets/roaring_knight")
           files = sorted((p for p in source.rglob("*") if p.is_file() and p.suffix.lower() == ".png"), key=lambda p: str(p).lower())
           if not files:
               raise SystemExit("Sprite ZIP contains no PNG files")
+          groups = {}
           index = []
-          for number, path in enumerate(files):
-              name = f"frame_{number:04d}_{path.name}"
-              shutil.copy2(path, target / name)
-              index.append({"file": name, "source": str(path.relative_to(source))})
+          for path in files:
+              rel = str(path.relative_to(source)).replace("\\", "/")
+              label = (rel.rsplit("/", 1)[0] + " " + path.stem).lower()
+              if re.search(r"(^|[^a-z])(idle|standing|stand|neutral)([^a-z]|$)", label):
+                  category = "idle"
+              elif re.search(r"attack|slash|swing|sword", label):
+                  category = "attack"
+              elif re.search(r"walk|run|move", label):
+                  category = "move"
+              elif re.search(r"projectile|bullet|shot", label):
+                  category = "projectile"
+              elif re.search(r"effect|vfx|impact|spark", label):
+                  category = "effect"
+              else:
+                  category = "sprite"
+              groups.setdefault(category, []).append(path)
+          for category, paths in groups.items():
+              for number, path in enumerate(paths):
+                  name = f"{category}_{number:03d}.png"
+                  shutil.copy2(path, target / name)
+                  index.append({"file": name, "category": category, "source": str(path.relative_to(source))})
           (target / "index.json").write_text(json.dumps(index, indent=2))
           print(f"Extracted {len(files)} PNG sprites")
+          print("Sprite categories: " + ", ".join(f"{k}={len(v)}" for k, v in sorted(groups.items())))
+          print("Idle sprite files: " + ", ".join(f"idle_{i:03d}.png" for i in range(len(groups.get("idle", [])))))
           PY
 
       - name: Build debug APK
