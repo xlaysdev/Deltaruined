@@ -69,6 +69,9 @@ jobs:
           print(f"Extracted {len(files)} PNG sprites")
           print("Sprite categories: " + ", ".join(f"{k}={len(v)}" for k, v in sorted(groups.items())))
           print("Idle sprite count: " + str(len(groups.get("idle", []))))
+          print("SOURCE SPRITE NAMES:")
+          for path in files[:80]:
+              print(str(path.relative_to(source)))
           PY
 
       - name: Build debug APK
