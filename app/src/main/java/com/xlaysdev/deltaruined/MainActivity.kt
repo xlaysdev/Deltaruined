@@ -170,7 +170,7 @@ private fun DeltaruinedGame() {
                         val p = Offset(soul.x * w, soul.y * h)
                         if (invulnerable % 4 < 2) {
                             with(PixelSprites) {
-                                drawSprite(soul, p, pixel = 1.35f, palette = mapOf('R' to SoulRed))
+                                drawSprite(PixelSprites.soul, p, pixel = 1.35f, palette = mapOf('R' to SoulRed))
                             }
                         }
                     }
