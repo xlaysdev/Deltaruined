@@ -32,10 +32,12 @@ jobs:
 
       - name: Extract Roaring Knight sprite pack
         run: |
+          python3 -m pip install --quiet pillow
           mkdir -p /tmp/knight-pack app/src/main/assets/roaring_knight
           unzip -oq Deltaruined_Roaring_Knight_Full_Spritepack.zip -d /tmp/knight-pack
           python3 - <<'PY'
           from pathlib import Path
+          from PIL import Image, ImageDraw
           import shutil, json, re
           source = Path("/tmp/knight-pack")
           target = Path("app/src/main/assets/roaring_knight")
@@ -45,8 +47,8 @@ jobs:
           files = sorted((p for p in source.rglob("*") if p.is_file() and p.suffix.lower() == ".png"), key=lambda p: str(p).lower())
           if not files:
               raise SystemExit("Sprite ZIP contains no PNG files")
-          # The archive's numbered knight_### frames were visually reviewed in contact sheets.
-          # Preserve each original frame number while assigning a semantic animation/effect group.
+          # Preserve numbered frames; uploaded contact sheets allow visual verification.
+          # Semantic ranges are provisional until each frame is reviewed.
           ranges = [
               (1,23,"knight"), (24,35,"effect"), (36,67,"attack"), (68,74,"slash"),
               (75,90,"knight"), (91,108,"attack"), (109,125,"magic"), (126,156,"idle"),
@@ -67,11 +69,39 @@ jobs:
               groups.setdefault(category, []).append(name)
               index.append({"file":name,"category":category,"source":str(path.relative_to(source)),"original_number":number})
           (target / "index.json").write_text(json.dumps(index, indent=2))
+          sheets = Path("sprite-contact-sheets")
+          sheets.mkdir(exist_ok=True)
+          cell_w, cell_h, cols, batch = 180, 150, 5, 40
+          for start in range(0, len(files), batch):
+              subset = files[start:start+batch]
+              rows = (len(subset) + cols - 1) // cols
+              sheet = Image.new("RGB", (cols*cell_w, rows*cell_h), (18,18,25))
+              draw = ImageDraw.Draw(sheet)
+              for j, path in enumerate(subset):
+                  try:
+                      with Image.open(path) as im:
+                          im.thumbnail((cell_w-12, cell_h-30))
+                          x=(j%cols)*cell_w+(cell_w-im.width)//2
+                          y=(j//cols)*cell_h+4
+                          rgba=im.convert("RGBA")
+                          sheet.paste(rgba, (x,y), rgba)
+                          draw.text(((j%cols)*cell_w+6,(j//cols)*cell_h+cell_h-20), path.name, fill=(255,230,120))
+                  except Exception:
+                      draw.text(((j%cols)*cell_w+6,(j//cols)*cell_h+8), f"ERROR {path.name}", fill=(255,80,80))
+              sheet.save(sheets / f"sheet_{start+1:03d}_{start+len(subset):03d}.jpg", quality=92)
+          print(f"Generated {((len(files)+batch-1)//batch)} visual contact sheets")
           print(f"Renamed and extracted {len(files)} PNG files")
           print("Groups: " + ", ".join(f"{k}={len(v)}" for k,v in sorted(groups.items())))
           if len(files) != 485:
               print(f"NOTE: expected 485 reviewed frames; archive contains {len(files)}")
           PY
+      - name: Upload sprite contact sheets
+        uses: actions/upload-artifact@v4
+        with:
+          name: roaring-knight-sprite-contact-sheets
+          path: sprite-contact-sheets/*.jpg
+          retention-days: 14
+
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
 
