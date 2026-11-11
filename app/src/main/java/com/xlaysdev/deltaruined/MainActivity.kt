@@ -127,16 +127,6 @@ private fun RoaringKnightFight() {
         Spacer(Modifier.height(4.dp))
         Box(Modifier.weight(1f).fillMaxWidth().background(Panel, RoundedCornerShape(4.dp)).padding(6.dp)) {
             Canvas(Modifier.fillMaxSize()) {
-                detectDragGestures { change, drag ->
-                    change.consume()
-                    if (mode == "battle" && turn % 2 == 1) {
-                        soul = Offset(
-                            (soul.x + drag.x / size.width).coerceIn(.13f, .87f),
-                            (soul.y + drag.y / size.height).coerceIn(.53f, .91f)
-                        )
-                    }
-                }
-            }) {
                 val w = size.width
                 val h = size.height
                 drawRect(Color(0xFF080811), size = size)
