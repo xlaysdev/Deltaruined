@@ -68,10 +68,7 @@ jobs:
           (target / "index.json").write_text(json.dumps(index, indent=2))
           print(f"Extracted {len(files)} PNG sprites")
           print("Sprite categories: " + ", ".join(f"{k}={len(v)}" for k, v in sorted(groups.items())))
-          print("Idle sprite files: " + ", ".join(f"idle_{i:03d}.png" for i in range(len(groups.get("idle", []))))
-          print("ARCHIVE PNG PATHS:")
-          for path in files:
-              print("SPRITE_PATH " + str(path.relative_to(source)))
+          print("Idle sprite count: " + str(len(groups.get("idle", []))))
           PY
 
       - name: Build debug APK
