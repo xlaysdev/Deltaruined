@@ -18,9 +18,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -32,187 +35,178 @@ private val Panel = Color(0xFF11111D)
 private val Gold = Color(0xFFFFD84A)
 private val SoulRed = Color(0xFFFF334F)
 private val White = Color(0xFFF5F2FF)
+private val KnightSilver = Color(0xFFDCE4F5)
 
-private data class Boss(val name: String, val title: String, val hp: Int, val intro: String, val color: Color)
-private data class Bullet(var x: Float, var y: Float, var vx: Float, var vy: Float, var radius: Float = 9f)
-
-private val bosses = listOf(
-    Boss("JEVIL", "THE CHAOS CLOWN", 180, "I CAN DO ANYTHING! CAN YOU DODGE ANYTHING?", Color(0xFFB66CFF)),
-    Boss("THE KNIGHT", "THE ROAMING DARK", 260, "THE WORLD WILL BE COVERED IN DARKNESS.", Color(0xFFB7C5E8)),
-    Boss("KING", "THE RULED ONE", 220, "BOW BEFORE THE POWER OF THE KING.", Color(0xFFDA354A)),
-    Boss("SPAMTON NEO", "THE [BIG SHOT]", 240, "NOW'S YOUR CHANCE TO BE A [[HERO]]!", Color(0xFFFFD34E))
-)
+private data class Bullet(val x: Float, val y: Float, val vx: Float, val vy: Float, val radius: Float = 8f)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.decorView.systemUiVisibility = 5894 or 1024 or 512
-        setContent { MaterialTheme { DeltaruinedGame() } }
+        setContent { MaterialTheme { RoaringKnightFight() } }
     }
 }
 
 @Composable
-private fun DeltaruinedGame() {
-    var selected by remember { mutableIntStateOf(0) }
-    var mode by remember { mutableStateOf("menu") }
+private fun RoaringKnightFight() {
+    val knightFrames = listOf(
+        ImageBitmap.imageResource(R.drawable.knight_idle_1),
+        ImageBitmap.imageResource(R.drawable.knight_idle_2),
+        ImageBitmap.imageResource(R.drawable.knight_idle_3),
+        ImageBitmap.imageResource(R.drawable.knight_idle_4),
+        ImageBitmap.imageResource(R.drawable.knight_idle_5)
+    )
     var playerHp by remember { mutableIntStateOf(20) }
-    var bossHp by remember { mutableIntStateOf(bosses[0].hp) }
+    var bossHp by remember { mutableIntStateOf(420) }
     var turn by remember { mutableIntStateOf(0) }
-    var message by remember { mutableStateOf("A strange shadow blocks your path.") }
-    var soul by remember { mutableStateOf(Offset(0.5f, 0.72f)) }
-    var bullets by remember { mutableStateOf(listOf<Bullet>()) }
     var frame by remember { mutableIntStateOf(0) }
+    var attackTicks by remember { mutableIntStateOf(0) }
     var invulnerable by remember { mutableIntStateOf(0) }
-    val boss = bosses[selected]
+    var soul by remember { mutableStateOf(Offset(.5f, .76f)) }
+    var bullets by remember { mutableStateOf(listOf<Bullet>()) }
+    var mode by remember { mutableStateOf("battle") }
+    var message by remember { mutableStateOf("The Roaring Knight blocks your path.") }
 
-    fun startFight(index: Int) {
-        selected = index
-        bossHp = bosses[index].hp
-        playerHp = 20
-        turn = 0
-        bullets = emptyList()
-        soul = Offset(.5f, .72f)
-        message = bosses[index].intro
-        mode = "battle"
-    }
-
-    LaunchedEffect(mode, selected) {
-        while (mode == "battle") {
-            delay(32)
-            frame++
-            if (mode == "battle" && turn % 2 == 1) {
-                val next = bullets.map { it.copy(x = it.x + it.vx, y = it.y + it.vy) }
-                    .filter { it.x in -0.1f..1.1f && it.y in -0.1f..1.1f }
-                bullets = next
-                if (frame % 22 == 0) {
-                    val x = Random.nextFloat().coerceIn(.12f, .88f)
-                    bullets = bullets + Bullet(x, .05f, (soul.x - x) * .008f, .009f + Random.nextFloat() * .004f)
+    LaunchedEffect(mode, turn) {
+        if (mode == "battle" && turn % 2 == 1) {
+            attackTicks = 0
+            while (mode == "battle" && turn % 2 == 1 && attackTicks < 180) {
+                delay(32)
+                frame++
+                attackTicks++
+                bullets = bullets.map { it.copy(x = it.x + it.vx, y = it.y + it.vy) }
+                    .filter { it.x in -.08f..1.08f && it.y in .40f..1.02f }
+                if (attackTicks % 17 == 0) {
+                    val x = Random.nextFloat().coerceIn(.16f, .84f)
+                    val targetX = soul.x
+                    val targetY = soul.y
+                    val dx = (targetX - x) * .018f
+                    val dy = ((targetY - .48f) * .018f).coerceIn(.004f, .014f)
+                    bullets = bullets + Bullet(x, .49f, dx, dy)
                 }
                 if (invulnerable > 0) invulnerable--
-                else if (bullets.any { hypot((it.x - soul.x) * 1.7f, it.y - soul.y) < .045f }) {
+                else if (bullets.any { hypot((it.x - soul.x) * 1.55f, (it.y - soul.y) * 1.1f) < .035f }) {
                     playerHp = (playerHp - 1).coerceAtLeast(0)
-                    invulnerable = 28
-                    message = "Ouch! Keep moving!"
-                    if (playerHp <= 0) mode = "defeat"
+                    invulnerable = 30
+                    message = "The Knight's attack hit you!"
+                    if (playerHp == 0) mode = "defeat"
                 }
-                if (frame % 190 == 0) {
-                    turn = 0
-                    bullets = emptyList()
-                    message = "Your turn. What will you do?"
-                }
+            }
+            if (mode == "battle") {
+                bullets = emptyList()
+                turn = 0
+                message = "The Knight pauses. Your turn!"
             }
         }
     }
 
+    LaunchedEffect(mode, turn) {
+        while (mode == "battle" && turn % 2 == 0) {
+            delay(100)
+            frame++
+        }
+    }
+
     Column(
-        Modifier.fillMaxSize().background(Ink).padding(horizontal = 18.dp, vertical = 10.dp),
+        Modifier.fillMaxSize().background(Ink).padding(horizontal = 18.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (mode == "menu") {
-            Spacer(Modifier.weight(1f))
-            Text("DELTARUINED", color = White, fontSize = 38.sp, fontWeight = FontWeight.Black, letterSpacing = 5.sp)
-            Text("A FAN-MADE BOSS RUSH", color = Gold, fontSize = 12.sp, letterSpacing = 3.sp)
-            Spacer(Modifier.height(24.dp))
-            Text("CHOOSE YOUR OPPONENT", color = White, fontSize = 14.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 14.dp)) {
-                bosses.forEachIndexed { index, item ->
-                    Button(onClick = { startFight(index) }, colors = ButtonDefaults.buttonColors(containerColor = Panel), shape = RoundedCornerShape(4.dp)) {
-                        Text(item.name, color = item.color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("THE ROARING KNIGHT", color = KnightSilver, fontSize = 19.sp, fontWeight = FontWeight.Black, letterSpacing = 1.4.sp)
+                Text("THE END OF THE WORLD DRAWS NEAR", color = Color.Gray, fontSize = 9.sp, letterSpacing = 1.sp)
             }
-            Spacer(Modifier.weight(1f))
-            Text("Touch controls • Survive the chaos", color = Color.Gray, fontSize = 11.sp)
-        } else {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text(boss.name, color = boss.color, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
-                    Text(boss.title, color = Color.LightGray, fontSize = 10.sp, letterSpacing = 2.sp)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("HP  $playerHp / 20", color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("BOSS  $bossHp / ${boss.hp}", color = Gold, fontSize = 12.sp)
-                }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("HP  $playerHp / 20", color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("KNIGHT  $bossHp / 420", color = Gold, fontSize = 12.sp)
             }
-            Spacer(Modifier.height(8.dp))
-            Box(Modifier.weight(1f).fillMaxWidth().background(Panel, RoundedCornerShape(4.dp)).padding(8.dp)) {
-                Canvas(Modifier.fillMaxSize().pointerInput(mode, turn) {
-                    detectDragGestures { change, drag ->
-                        change.consume()
-                        if (turn % 2 == 1) {
-                            soul = Offset(
-                                (soul.x + drag.x / size.width).coerceIn(.06f, .94f),
-                                (soul.y + drag.y / size.height).coerceIn(.08f, .92f)
-                            )
-                        }
-                    }
-                }) {
-                    val w = size.width
-                    val h = size.height
-                    drawRect(Color(0xFF080811), size = size)
-                    // Pixel-grid arena and boss emblem.
-                    for (i in 1..11) drawLine(Color(0xFF202034), Offset(w * i / 12f, 0f), Offset(w * i / 12f, h), 1f)
-                    drawCircle(boss.color.copy(alpha = .12f), w * .12f, Offset(w * .5f, h * .25f))
-                    with(PixelSprites) {
-                        drawSprite(
-                            rows = bosses[selected],
-                            center = Offset(w * .5f, h * .25f),
-                            pixel = (w / 27f).coerceAtMost(h / 25f),
-                            palette = palettes[selected]
+        }
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.weight(1f).fillMaxWidth().background(Panel, RoundedCornerShape(4.dp)).padding(6.dp)) {
+            Canvas(Modifier.fillMaxSize().pointerInput(mode, turn) {
+                detectDragGestures { change, drag ->
+                    change.consume()
+                    if (mode == "battle" && turn % 2 == 1) {
+                        soul = Offset(
+                            (soul.x + drag.x / size.width).coerceIn(.13f, .87f),
+                            (soul.y + drag.y / size.height).coerceIn(.53f, .91f)
                         )
                     }
-                    drawRect(Color.White, topLeft = Offset(w * .12f, h * .48f), size = Size(w * .76f, h * .44f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
-                    bullets.forEach { b ->
-                        drawCircle(boss.color, b.radius, Offset(b.x * w, b.y * h))
-                        drawCircle(Color.White.copy(alpha = .8f), b.radius * .35f, Offset(b.x * w, b.y * h))
-                    }
-                    if (turn % 2 == 1) {
-                        val p = Offset(soul.x * w, soul.y * h)
-                        if (invulnerable % 4 < 2) {
-                            with(PixelSprites) {
-                                drawSprite(PixelSprites.soul, p, pixel = 1.35f, palette = mapOf('R' to SoulRed))
-                            }
-                        }
-                    }
                 }
-                if (turn % 2 == 0) {
-                    Text("YOUR TURN", color = Gold, modifier = Modifier.align(Alignment.TopCenter).padding(8.dp), fontSize = 11.sp, letterSpacing = 2.sp)
-                } else {
-                    Text("DODGE!", color = SoulRed, modifier = Modifier.align(Alignment.TopCenter).padding(8.dp), fontSize = 11.sp, letterSpacing = 2.sp)
+            }) {
+                val w = size.width
+                val h = size.height
+                drawRect(Color(0xFF080811), size = size)
+                for (i in 1..11) drawLine(Color(0xFF202034), Offset(w * i / 12f, 0f), Offset(w * i / 12f, h), 1f)
+                val knightSize = (w * .28f).coerceAtMost(h * .34f).toInt()
+                val knight = knightFrames[(frame / 9) % knightFrames.size]
+                drawImage(
+                    image = knight,
+                    dstOffset = IntOffset((w / 2f - knightSize / 2f).toInt(), (h * .02f).toInt()),
+                    dstSize = IntSize(knightSize, knightSize)
+                )
+                drawRect(Color.White, topLeft = Offset(w * .12f, h * .43f), size = Size(w * .76f, h * .51f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
+                bullets.forEach { bullet ->
+                    drawCircle(KnightSilver, bullet.radius, Offset(bullet.x * w, bullet.y * h))
+                    drawCircle(Color.White, bullet.radius * .38f, Offset(bullet.x * w, bullet.y * h))
+                }
+                if (turn % 2 == 1 && mode == "battle") {
+                    val p = Offset(soul.x * w, soul.y * h)
+                    if (invulnerable % 4 < 2) {
+                        drawCircle(SoulRed, 9f, p)
+                        drawCircle(Color.White, 2.2f, Offset(p.x - 2f, p.y - 2f))
+                    }
                 }
             }
-            Text(message, color = White, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp))
-            if (mode == "battle") {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("FIGHT", "ACT", "ITEM", "SPARE").forEach { action ->
-                        Button(
-                            onClick = {
-                                if (turn % 2 == 0) {
-                                    when (action) {
-                                        "FIGHT" -> { bossHp = (bossHp - 30).coerceAtLeast(0); message = "You strike with determination!" }
-                                        "ACT" -> message = "You studied ${boss.name}. It seems unsettled."
-                                        "ITEM" -> { playerHp = (playerHp + 6).coerceAtMost(20); message = "You recovered 6 HP!" }
-                                        "SPARE" -> { message = "You offered mercy."; if (bossHp < boss.hp / 3) mode = "victory" else message = "But ${boss.name} is not ready to be spared." }
+            Text(if (turn % 2 == 0) "YOUR TURN" else "DODGE THE KNIGHT", color = if (turn % 2 == 0) Gold else SoulRed, modifier = Modifier.align(Alignment.TopCenter).padding(7.dp), fontSize = 11.sp, letterSpacing = 2.sp)
+        }
+        Text(message, color = White, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp))
+        if (mode == "battle") {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("FIGHT", "ACT", "ITEM", "SPARE").forEach { action ->
+                    Button(
+                        onClick = {
+                            if (turn % 2 == 0) {
+                                when (action) {
+                                    "FIGHT" -> {
+                                        bossHp = (bossHp - 35).coerceAtLeast(0)
+                                        message = "You strike the Roaring Knight!"
                                     }
-                                    if (bossHp <= 0) mode = "victory"
-                                    else if (mode == "battle") { turn++; message = "${boss.name} attacks! Drag the soul to dodge!" }
+                                    "ACT" -> message = "You call out to the Knight. The air trembles..."
+                                    "ITEM" -> {
+                                        playerHp = (playerHp + 6).coerceAtMost(20)
+                                        message = "You restored 6 HP."
+                                    }
+                                    "SPARE" -> message = "The Knight cannot be spared yet."
                                 }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF251D35)),
-                            shape = RoundedCornerShape(4.dp),
-                            contentPadding = PaddingValues(vertical = 8.dp, horizontal = 2.dp)
-                        ) { Text(action, color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
-                    }
-                }
-            } else {
-                Spacer(Modifier.height(8.dp))
-                Text(if (mode == "victory") "VICTORY!" else "YOU LOST", color = Gold, fontSize = 26.sp, fontWeight = FontWeight.Black)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = { startFight(selected) }) { Text("RETRY") }
-                    Button(onClick = { mode = "menu"; bullets = emptyList() }) { Text("BOSS SELECT") }
+                                if (bossHp <= 0) mode = "victory"
+                                else {
+                                    turn = 1
+                                    message = "The Roaring Knight attacks! Drag the SOUL to dodge!"
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF251D35)),
+                        shape = RoundedCornerShape(4.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 2.dp)
+                    ) { Text(action, color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
                 }
             }
+        } else {
+            Spacer(Modifier.height(6.dp))
+            Text(if (mode == "victory") "THE KNIGHT IS DEFEATED" else "YOU FELL INTO DARKNESS", color = Gold, fontSize = 21.sp, fontWeight = FontWeight.Black)
+            Button(onClick = {
+                playerHp = 20
+                bossHp = 420
+                turn = 0
+                attackTicks = 0
+                invulnerable = 0
+                bullets = emptyList()
+                soul = Offset(.5f, .76f)
+                message = "The Roaring Knight blocks your path."
+                mode = "battle"
+            }) { Text("FIGHT AGAIN") }
         }
     }
 }
