@@ -57,7 +57,7 @@ private fun KnightGame() {
     val sprites by produceState<List<androidx.compose.ui.graphics.ImageBitmap>>(emptyList()) {
         value = withContext(Dispatchers.IO) {
             val names = context.assets.list("roaring_knight")?.filter {
-                it.endsWith(".png", true) && (it.startsWith("idle_", true) || it.startsWith("attack_", true) || it.startsWith("move_", true))
+                it.endsWith(".png", true) && (it.startsWith("knight_", true) || it.startsWith("idle_", true) || it.startsWith("attack_", true) || it.startsWith("move_", true))
             }?.sorted().orEmpty()
             names.mapNotNull { name -> runCatching {
                 context.assets.open("roaring_knight/$name").use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
@@ -138,37 +138,55 @@ private fun KnightGame() {
         Spacer(Modifier.height(5.dp))
         Box(Modifier.weight(1f).fillMaxWidth().background(Color(0xFF090912),RoundedCornerShape(5.dp)).border(1.dp,Color(0xFF39384A),RoundedCornerShape(5.dp))) {
             Canvas(Modifier.fillMaxSize()) {
-                val w=size.width; val h=size.height; val cx=w*.5f
+                val w=size.width; val h=size.height
                 drawRect(Color(0xFF080811),size=size)
-                for(i in 0..14) drawLine(Color(0xFF151526),Offset(w*i/14f,0f),Offset(w*i/14f,h),1f)
+                for(i in 0..18) drawLine(Color(0xFF151526),Offset(w*i/18f,0f),Offset(w*i/18f,h),1f)
+                // Character formation: player left, Roaring Knight right, SOUL arena centered.
                 val bob=kotlin.math.sin(tick*.08f).toFloat()*3f
-                val cy=h*.20f+bob
+                val playerX=w*.14f
+                val playerY=h*.49f
+                // Kris-like player silhouette on the left.
+                drawOval(Color(0xFF18233A),topLeft=Offset(playerX-w*.045f,playerY+h*.13f),size=Size(w*.09f,h*.20f))
+                drawRoundRect(Color(0xFF31558A),topLeft=Offset(playerX-w*.035f,playerY-h*.005f),size=Size(w*.07f,h*.19f),cornerRadius=androidx.compose.ui.geometry.CornerRadius(9f,9f))
+                drawCircle(Color(0xFFE0C5A5),h*.055f,Offset(playerX,playerY-h*.055f))
+                drawRect(Color(0xFF17243A),Offset(playerX-w*.055f,playerY-h*.075f),Size(w*.11f,h*.035f))
+                drawRect(Color(0xFF18233A),Offset(playerX-w*.032f,playerY+h*.18f),Size(w*.025f,h*.12f))
+                drawRect(Color(0xFF18233A),Offset(playerX+w*.008f,playerY+h*.18f),Size(w*.025f,h*.12f))
+                val knightX=w*.84f
+                val knightY=h*.20f+bob
                 if(sprites.isNotEmpty()) {
                     val img=sprites[(tick/8)%sprites.size]
-                    val side=(w*.30f).coerceAtMost(h*.42f).toInt()
-                    val off=IntOffset((cx-side/2).toInt(),(h*.025f).toInt())
+                    val side=(w*.24f).coerceAtMost(h*.66f).toInt()
+                    val off=IntOffset((knightX-side/2).toInt(),(knightY-side*.35f).toInt())
                     val dims=IntSize(side,side)
-                    drawImage(img,dstOffset=off+IntOffset(13,-3),dstSize=dims,alpha=.13f)
-                    drawImage(img,dstOffset=off+IntOffset(6,-1),dstSize=dims,alpha=.25f)
+                    drawImage(img,dstOffset=off+IntOffset(12,-3),dstSize=dims,alpha=.13f)
+                    drawImage(img,dstOffset=off+IntOffset(5,-1),dstSize=dims,alpha=.24f)
                     drawImage(img,dstOffset=off,dstSize=dims)
                 } else {
                     val armor=Color(0xFFBFC9D9); val shade=Color(0xFF465064)
-                    drawCircle(shade,h*.095f,Offset(cx,cy+h*.055f))
-                    drawCircle(armor,h*.071f,Offset(cx,cy-h*.035f))
-                    drawRect(armor,Offset(cx-h*.07f,cy+h*.025f),Size(h*.14f,h*.20f))
-                    drawRect(shade,Offset(cx-h*.115f,cy+h*.19f),Size(h*.23f,h*.045f))
-                    drawLine(Color(0xFF242A3C),Offset(cx-h*.05f,cy-h*.04f),Offset(cx+h*.05f,cy-h*.04f),h*.025f)
-                    drawLine(Color(0xFFBFC9D9),Offset(cx+h*.08f,cy+h*.08f),Offset(cx+h*.25f,cy-h*.13f),h*.025f)
-                    drawLine(Color(0xFF9B243D),Offset(cx+h*.25f,cy-h*.13f),Offset(cx+h*.28f,cy-h*.20f),h*.012f)
+                    drawCircle(shade,h*.095f,Offset(knightX,knightY+h*.055f))
+                    drawCircle(armor,h*.071f,Offset(knightX,knightY-h*.035f))
+                    drawRect(armor,Offset(knightX-h*.07f,knightY+h*.025f),Size(h*.14f,h*.20f))
+                    drawRect(shade,Offset(knightX-h*.115f,knightY+h*.19f),Size(h*.23f,h*.045f))
+                    drawLine(Color(0xFF242A3C),Offset(knightX-h*.05f,knightY-h*.04f),Offset(knightX+h*.05f,knightY-h*.04f),h*.025f)
+                    drawLine(armor,Offset(knightX-h*.08f,knightY+h*.08f),Offset(knightX-h*.25f,knightY-h*.13f),h*.025f)
+                    drawLine(Color(0xFF9B243D),Offset(knightX-h*.25f,knightY-h*.13f),Offset(knightX-h*.28f,knightY-h*.20f),h*.012f)
                 }
-                drawRect(Color.White,Offset(w*.12f,h*.43f),Size(w*.76f,h*.51f),style=Stroke(3f))
-                shots.forEach { drawCircle(Color(0xFFBBC9E8),9f,Offset(it.x*w,it.y*h)); drawCircle(Color.White,3f,Offset(it.x*w,it.y*h)) }
+                // Centered bullet box; soul and projectiles use box-local coordinates.
+                val left=w*.355f; val top=h*.34f; val boxW=w*.29f; val boxH=h*.59f
+                drawRect(Color.White,Offset(left,top),Size(boxW,boxH),style=Stroke(3f))
+                shots.forEach {
+                    val sx=left+it.x*boxW; val sy=top+it.y*boxH
+                    drawCircle(Color(0xFFBBC9E8),8f,Offset(sx,sy))
+                    drawCircle(Color.White,2.8f,Offset(sx,sy))
+                }
                 if(phase==Phase.ENEMY && invuln%4<2) {
-                    val p=Offset(soul.x*w,soul.y*h); drawCircle(Red,9f,p); drawCircle(Color.White,2f,Offset(p.x-2,p.y-2))
+                    val p=Offset(left+soul.x*boxW,top+soul.y*boxH)
+                    drawCircle(Red,9f,p); drawCircle(Color.White,2f,Offset(p.x-2,p.y-2))
                 }
                 if(phase==Phase.PLAYER && menu=="FIGHT") {
-                    drawRect(Gold,Offset(w*.25f,h*.955f),Size(w*.5f,3f))
-                    drawCircle(Color.White,6f,Offset(w*(.25f+(meter%100)/100f*.5f),h*.965f))
+                    drawRect(Gold,Offset(w*.37f,h*.955f),Size(w*.26f,3f))
+                    drawCircle(Color.White,6f,Offset(w*(.37f+(meter%100)/100f*.26f),h*.965f))
                 }
             }
             Text(when(phase){Phase.ENEMY->"DODGE THE ATTACK";Phase.PLAYER->"YOUR TURN";Phase.INTRO->"A DARK PRESENCE APPROACHES";else->"BATTLE OVER"},
