@@ -54,14 +54,23 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun KnightGame() {
     val context = LocalContext.current
-    val sprites by produceState<List<androidx.compose.ui.graphics.ImageBitmap>>(emptyList()) {
+    val spriteSets by produceState<Map<String, List<androidx.compose.ui.graphics.ImageBitmap>>>(emptyMap()) {
         value = withContext(Dispatchers.IO) {
-            val names = context.assets.list("roaring_knight")?.filter {
-                it.endsWith(".png", true) && (it.startsWith("knight_", true) || it.startsWith("idle_", true) || it.startsWith("attack_", true) || it.startsWith("move_", true))
-            }?.sorted().orEmpty()
-            names.mapNotNull { name -> runCatching {
-                context.assets.open("roaring_knight/$name").use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
-            }.getOrNull() }
+            val assets = context.assets.list("roaring_knight").orEmpty()
+            fun load(prefix: String): List<androidx.compose.ui.graphics.ImageBitmap> =
+                assets.filter { it.startsWith(prefix) && it.endsWith(".png", true) }
+                    .sorted().take(80).mapNotNull { name -> runCatching {
+                        context.assets.open("roaring_knight/$name").use { stream ->
+                            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                            BitmapFactory.decodeStream(stream, null, bounds)
+                            val sample = if (maxOf(bounds.outWidth, bounds.outHeight) > 768) 2 else 1
+                            context.assets.open("roaring_knight/$name").use { imageStream ->
+                                BitmapFactory.decodeStream(imageStream, null, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
+                            }
+                        }
+                    }.getOrNull() }
+            mapOf("idle" to load("idle_"), "knight" to load("knight_"), "attack" to load("attack_"),
+                "slash" to load("slash_"), "magic" to load("magic_"), "effect" to load("effect_"))
         }
     }
     var phase by remember { mutableStateOf(Phase.INTRO) }
@@ -154,8 +163,11 @@ private fun KnightGame() {
                 drawRect(Color(0xFF18233A),Offset(playerX+w*.008f,playerY+h*.18f),Size(w*.025f,h*.12f))
                 val knightX=w*.84f
                 val knightY=h*.20f+bob
-                if(sprites.isNotEmpty()) {
-                    val img=sprites[(tick/8)%sprites.size]
+                val idleFrames = spriteSets["idle"].orEmpty().ifEmpty { spriteSets["knight"].orEmpty() }
+                val attackFrames = spriteSets["attack"].orEmpty().ifEmpty { spriteSets["slash"].orEmpty() }
+                val activeFrames = if (phase == Phase.ENEMY && tick % 54 in 0..17 && attackFrames.isNotEmpty()) attackFrames else idleFrames
+                if(activeFrames.isNotEmpty()) {
+                    val img=activeFrames[(tick/5)%activeFrames.size]
                     val side=(w*.24f).coerceAtMost(h*.66f).toInt()
                     val off=IntOffset((knightX-side/2).toInt(),(knightY-side*.35f).toInt())
                     val dims=IntSize(side,side)
@@ -175,14 +187,17 @@ private fun KnightGame() {
                 // Centered bullet box; soul and projectiles use box-local coordinates.
                 val left=w*.355f; val top=h*.34f; val boxW=w*.29f; val boxH=h*.59f
                 drawRect(Color.White,Offset(left,top),Size(boxW,boxH),style=Stroke(3f))
-                shots.forEach {
-                    val sx=left+it.x*boxW; val sy=top+it.y*boxH
-                    drawCircle(Color(0xFFBBC9E8),8f,Offset(sx,sy))
-                    drawCircle(Color.White,2.8f,Offset(sx,sy))
+                shots.forEachIndexed { index, shot ->
+                    val sx=left+shot.x*boxW; val sy=top+shot.y*boxH
+                    val glow = if (turn % 3 == 1) Color(0xFFFF536B) else Color(0xFFBBC9E8)
+                    drawCircle(glow,11f,Offset(sx,sy),alpha=.22f)
+                    drawCircle(glow,6f,Offset(sx,sy))
+                    drawCircle(Color.White,2.4f,Offset(sx-1f,sy-1f))
                 }
                 if(phase==Phase.ENEMY && invuln%4<2) {
                     val p=Offset(left+soul.x*boxW,top+soul.y*boxH)
-                    drawCircle(Red,9f,p); drawCircle(Color.White,2f,Offset(p.x-2,p.y-2))
+                    drawCircle(Red,13f,p,alpha=.20f)
+                    drawCircle(Red,8f,p); drawCircle(Color.White,2.5f,Offset(p.x-2,p.y-2))
                 }
                 if(phase==Phase.PLAYER && menu=="FIGHT") {
                     drawRect(Gold,Offset(w*.37f,h*.955f),Size(w*.26f,3f))
