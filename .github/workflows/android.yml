@@ -71,7 +71,7 @@ jobs:
           print("Idle sprite files: " + ", ".join(f"idle_{i:03d}.png" for i in range(len(groups.get("idle", []))))
           print("ARCHIVE PNG PATHS:")
           for path in files:
-              print("SPRITE_PATH " + str(path.relative_to(source))))
+              print("SPRITE_PATH " + str(path.relative_to(source)))
           PY
 
       - name: Build debug APK
