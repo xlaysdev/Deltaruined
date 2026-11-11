@@ -47,9 +47,9 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun RoaringKnightFight() {
     val context = LocalContext.current
-    val knightFrames = remember {
+    val idleFrames = remember {
         context.assets.list("roaring_knight")
-            ?.filter { it.endsWith(".png", ignoreCase = true) }
+            ?.filter { it.startsWith("idle_", ignoreCase = true) && it.endsWith(".png", ignoreCase = true) }
             ?.sorted()
             ?.mapNotNull { name ->
                 runCatching {
@@ -58,6 +58,20 @@ private fun RoaringKnightFight() {
                     }
                 }.getOrNull()
             } ?: emptyList()
+    }
+    val knightFrames = remember {
+        if (idleFrames.isNotEmpty()) idleFrames else {
+            context.assets.list("roaring_knight")
+                ?.filter { it.endsWith(".png", ignoreCase = true) }
+                ?.sorted()
+                ?.mapNotNull { name ->
+                    runCatching {
+                        context.assets.open("roaring_knight/$name").use { stream ->
+                            BitmapFactory.decodeStream(stream)?.asImageBitmap()
+                        }
+                    }.getOrNull()
+                } ?: emptyList()
+        }
     }
     var playerHp by remember { mutableIntStateOf(20) }
     var bossHp by remember { mutableIntStateOf(420) }
@@ -139,11 +153,17 @@ private fun RoaringKnightFight() {
                 if (knightFrames.isNotEmpty()) {
                     val sprite = knightFrames[(frame / 8) % knightFrames.size]
                     val spriteSize = (w * .42f).coerceAtMost(h * .48f).toInt()
-                    drawImage(
-                        image = sprite,
-                        dstOffset = androidx.compose.ui.unit.IntOffset((w / 2f - spriteSize / 2f).toInt(), (h * .015f).toInt()),
-                        dstSize = androidx.compose.ui.unit.IntSize(spriteSize, spriteSize)
-                    )
+                    val spriteX = (w / 2f - spriteSize / 2f).toInt()
+                    val spriteY = (h * .015f).toInt()
+                    val spriteOffset = androidx.compose.ui.unit.IntOffset(spriteX, spriteY)
+                    val spriteDimensions = androidx.compose.ui.unit.IntSize(spriteSize, spriteSize)
+                    // Layer fading copies behind the idle sprite for the Knight's ghost-trail effect.
+                    if (turn % 2 == 0 || mode != "battle") {
+                        drawImage(sprite, dstOffset = spriteOffset + androidx.compose.ui.unit.IntOffset(30, -7), dstSize = spriteDimensions, alpha = 0.08f)
+                        drawImage(sprite, dstOffset = spriteOffset + androidx.compose.ui.unit.IntOffset(20, -5), dstSize = spriteDimensions, alpha = 0.14f)
+                        drawImage(sprite, dstOffset = spriteOffset + androidx.compose.ui.unit.IntOffset(10, -2), dstSize = spriteDimensions, alpha = 0.22f)
+                    }
+                    drawImage(image = sprite, dstOffset = spriteOffset, dstSize = spriteDimensions)
                 } else {
                     // Visible fallback while running a build without the sprite pack.
                     val knightSize = (w * .28f).coerceAtMost(h * .34f)
