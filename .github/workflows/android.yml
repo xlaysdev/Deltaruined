@@ -47,7 +47,9 @@ jobs:
           for path in files:
               rel = str(path.relative_to(source)).replace("\\", "/")
               label = (rel.rsplit("/", 1)[0] + " " + path.stem).lower()
-              if re.search(r"(^|[^a-z])(idle|standing|stand|neutral)([^a-z]|$)", label):
+              if path.stem.lower().startswith("knight_"):
+                  category = "knight"
+              elif re.search(r"(^|[^a-z])(idle|standing|stand|neutral)([^a-z]|$)", label):
                   category = "idle"
               elif re.search(r"attack|slash|swing|sword", label):
                   category = "attack"
@@ -68,10 +70,7 @@ jobs:
           (target / "index.json").write_text(json.dumps(index, indent=2))
           print(f"Extracted {len(files)} PNG sprites")
           print("Sprite categories: " + ", ".join(f"{k}={len(v)}" for k, v in sorted(groups.items())))
-          print("Idle sprite count: " + str(len(groups.get("idle", []))))
-          print("SOURCE SPRITE NAMES:")
-          for path in files[:80]:
-              print(str(path.relative_to(source)))
+          print("Knight sprite count: " + str(len(groups.get("knight", []))))
           PY
 
       - name: Build debug APK
