@@ -5,7 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -19,7 +18,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -66,6 +64,11 @@ private fun RoaringKnightFight() {
     var bullets by remember { mutableStateOf(listOf<Bullet>()) }
     var mode by remember { mutableStateOf("battle") }
     var message by remember { mutableStateOf("The Roaring Knight blocks your path.") }
+    val moveSoul: (Float, Float) -> Unit = { dx, dy ->
+        if (mode == "battle" && turn % 2 == 1) {
+            soul = Offset((soul.x + dx).coerceIn(.13f, .87f), (soul.y + dy).coerceIn(.53f, .91f))
+        }
+    }
 
     LaunchedEffect(mode, turn) {
         if (mode == "battle" && turn % 2 == 1) {
@@ -123,7 +126,7 @@ private fun RoaringKnightFight() {
         }
         Spacer(Modifier.height(4.dp))
         Box(Modifier.weight(1f).fillMaxWidth().background(Panel, RoundedCornerShape(4.dp)).padding(6.dp)) {
-            Canvas(Modifier.fillMaxSize().pointerInput(mode, turn) {
+            Canvas(Modifier.fillMaxSize()) {
                 detectDragGestures { change, drag ->
                     change.consume()
                     if (mode == "battle" && turn % 2 == 1) {
@@ -160,7 +163,25 @@ private fun RoaringKnightFight() {
             }
             Text(if (turn % 2 == 0) "YOUR TURN" else "DODGE THE KNIGHT", color = if (turn % 2 == 0) Gold else SoulRed, modifier = Modifier.align(Alignment.TopCenter).padding(7.dp), fontSize = 11.sp, letterSpacing = 2.sp)
         }
-        Text(message, color = White, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp))
+        if (mode == "battle" && turn % 2 == 1) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 3.dp, bottom = 2.dp)) {
+                Button(onClick = { moveSoul(0f, -.055f) }, modifier = Modifier.size(42.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF332744)), shape = RoundedCornerShape(8.dp)) {
+                    Text("▲", color = Gold, fontSize = 17.sp)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Button(onClick = { moveSoul(-.055f, 0f) }, modifier = Modifier.size(42.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF332744)), shape = RoundedCornerShape(8.dp)) {
+                        Text("◀", color = Gold, fontSize = 17.sp)
+                    }
+                    Button(onClick = { moveSoul(0f, .055f) }, modifier = Modifier.size(42.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF332744)), shape = RoundedCornerShape(8.dp)) {
+                        Text("▼", color = Gold, fontSize = 17.sp)
+                    }
+                    Button(onClick = { moveSoul(.055f, 0f) }, modifier = Modifier.size(42.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF332744)), shape = RoundedCornerShape(8.dp)) {
+                        Text("▶", color = Gold, fontSize = 17.sp)
+                    }
+                }
+            }
+        }
+        Text(message, color = White, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp))
         if (mode == "battle") {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("FIGHT", "ACT", "ITEM", "SPARE").forEach { action ->
@@ -182,7 +203,7 @@ private fun RoaringKnightFight() {
                                 if (bossHp <= 0) mode = "victory"
                                 else {
                                     turn = 1
-                                    message = "The Roaring Knight attacks! Drag the SOUL to dodge!"
+                                    message = "The Roaring Knight attacks! Use the arrow controls to dodge!"
                                 }
                             }
                         },
