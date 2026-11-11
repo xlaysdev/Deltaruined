@@ -1,0 +1,1 @@
+# Deltaruined currently ships without code shrinking.
