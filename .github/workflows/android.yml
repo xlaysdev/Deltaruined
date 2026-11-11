@@ -39,40 +39,39 @@ jobs:
           import shutil, json, re
           source = Path("/tmp/knight-pack")
           target = Path("app/src/main/assets/roaring_knight")
+          target.mkdir(parents=True, exist_ok=True)
+          for old in target.glob("*.png"):
+              old.unlink()
           files = sorted((p for p in source.rglob("*") if p.is_file() and p.suffix.lower() == ".png"), key=lambda p: str(p).lower())
           if not files:
               raise SystemExit("Sprite ZIP contains no PNG files")
-          groups = {}
-          index = []
-          for path in files:
-              rel = str(path.relative_to(source)).replace("\\", "/")
-              label = (rel.rsplit("/", 1)[0] + " " + path.stem).lower()
-              if path.stem.lower().startswith("knight_"):
-                  category = "knight"
-              elif re.search(r"(^|[^a-z])(idle|standing|stand|neutral)([^a-z]|$)", label):
-                  category = "idle"
-              elif re.search(r"attack|slash|swing|sword", label):
-                  category = "attack"
-              elif re.search(r"walk|run|move", label):
-                  category = "move"
-              elif re.search(r"projectile|bullet|shot", label):
-                  category = "projectile"
-              elif re.search(r"effect|vfx|impact|spark", label):
-                  category = "effect"
-              else:
-                  category = "sprite"
-              groups.setdefault(category, []).append(path)
-          for category, paths in groups.items():
-              for number, path in enumerate(paths):
-                  name = f"{category}_{number:03d}.png"
-                  shutil.copy2(path, target / name)
-                  index.append({"file": name, "category": category, "source": str(path.relative_to(source))})
+          # The archive's numbered knight_### frames were visually reviewed in contact sheets.
+          # Preserve each original frame number while assigning a semantic animation/effect group.
+          ranges = [
+              (1,23,"knight"), (24,35,"effect"), (36,67,"attack"), (68,74,"slash"),
+              (75,90,"knight"), (91,108,"attack"), (109,125,"magic"), (126,156,"idle"),
+              (157,165,"effect"), (166,218,"idle"), (219,234,"attack"), (235,239,"magic"),
+              (240,254,"knight"), (255,265,"slash"), (266,274,"duel"), (275,297,"effect"),
+              (298,302,"projectile"), (303,306,"background"), (307,326,"effect"),
+              (327,333,"particle"), (334,366,"attack"), (367,374,"magic"), (375,388,"idle"),
+              (389,412,"effect"), (413,420,"magic"), (421,446,"projectile"), (447,454,"effect"),
+              (455,472,"slash"), (473,480,"effect"), (481,485,"ui")
+          ]
+          groups, index = {}, []
+          for ordinal, path in enumerate(files, 1):
+              match = re.search(r"(\\d+)$", path.stem)
+              number = int(match.group(1)) if match else ordinal
+              category = next((name for first,last,name in ranges if first <= number <= last), "misc")
+              name = f"{category}_{number:03d}.png"
+              shutil.copy2(path, target / name)
+              groups.setdefault(category, []).append(name)
+              index.append({"file":name,"category":category,"source":str(path.relative_to(source)),"original_number":number})
           (target / "index.json").write_text(json.dumps(index, indent=2))
-          print(f"Extracted {len(files)} PNG sprites")
-          print("Sprite categories: " + ", ".join(f"{k}={len(v)}" for k, v in sorted(groups.items())))
-          print("Knight sprite count: " + str(len(groups.get("knight", []))))
+          print(f"Renamed and extracted {len(files)} PNG files")
+          print("Groups: " + ", ".join(f"{k}={len(v)}" for k,v in sorted(groups.items())))
+          if len(files) != 485:
+              print(f"NOTE: expected 485 reviewed frames; archive contains {len(files)}")
           PY
-
       - name: Build debug APK
         run: gradle --no-daemon assembleDebug
 
