@@ -61,7 +61,7 @@ jobs:
           ]
           groups, index = {}, []
           for ordinal, path in enumerate(files, 1):
-              match = re.search(r"(\\d+)$", path.stem)
+              match = re.search(r"(\d+)$", path.stem)
               number = int(match.group(1)) if match else ordinal
               category = next((name for first,last,name in ranges if first <= number <= last), "misc")
               name = f"{category}_{number:03d}.png"
