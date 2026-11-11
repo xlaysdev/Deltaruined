@@ -17,11 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -47,13 +43,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun RoaringKnightFight() {
-    val knightFrames = listOf(
-        ImageBitmap.imageResource(R.drawable.knight_idle_1),
-        ImageBitmap.imageResource(R.drawable.knight_idle_2),
-        ImageBitmap.imageResource(R.drawable.knight_idle_3),
-        ImageBitmap.imageResource(R.drawable.knight_idle_4),
-        ImageBitmap.imageResource(R.drawable.knight_idle_5)
-    )
     var playerHp by remember { mutableIntStateOf(20) }
     var bossHp by remember { mutableIntStateOf(420) }
     var turn by remember { mutableIntStateOf(0) }
@@ -131,13 +120,20 @@ private fun RoaringKnightFight() {
                 val h = size.height
                 drawRect(Color(0xFF080811), size = size)
                 for (i in 1..11) drawLine(Color(0xFF202034), Offset(w * i / 12f, 0f), Offset(w * i / 12f, h), 1f)
-                val knightSize = (w * .28f).coerceAtMost(h * .34f).toInt()
-                val knight = knightFrames[(frame / 9) % knightFrames.size]
-                drawImage(
-                    image = knight,
-                    dstOffset = IntOffset((w / 2f - knightSize / 2f).toInt(), (h * .02f).toInt()),
-                    dstSize = IntSize(knightSize, knightSize)
-                )
+                val knightSize = (w * .28f).coerceAtMost(h * .34f)
+                val kx = w * .5f
+                val ky = h * .19f
+                val armor = Color(0xFFBFC9D9)
+                val shadow = Color(0xFF465064)
+                val pulse = if ((frame / 12) % 2 == 0) 0f else 3f
+                drawCircle(shadow, knightSize * .19f, Offset(kx, ky + knightSize * .12f))
+                drawRect(armor, Offset(kx - knightSize * .12f, ky + knightSize * .10f), Size(knightSize * .24f, knightSize * .34f))
+                drawRect(shadow, Offset(kx - knightSize * .19f, ky + knightSize * .27f), Size(knightSize * .38f, knightSize * .09f))
+                drawCircle(armor, knightSize * .13f, Offset(kx, ky))
+                drawRect(Color(0xFF111522), Offset(kx - knightSize * .085f, ky - knightSize * .015f), Size(knightSize * .17f, knightSize * .055f))
+                drawLine(Color(0xFFDA263F), Offset(kx + knightSize * .015f, ky + knightSize * .01f), Offset(kx + knightSize * .16f, ky - knightSize * .12f - pulse), knightSize * .035f)
+                drawLine(armor, Offset(kx - knightSize * .10f, ky + knightSize * .36f), Offset(kx - knightSize * .16f, ky + knightSize * .49f), knightSize * .07f)
+                drawLine(armor, Offset(kx + knightSize * .10f, ky + knightSize * .36f), Offset(kx + knightSize * .16f, ky + knightSize * .49f), knightSize * .07f)
                 drawRect(Color.White, topLeft = Offset(w * .12f, h * .43f), size = Size(w * .76f, h * .51f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
                 bullets.forEach { bullet ->
                     drawCircle(KnightSilver, bullet.radius, Offset(bullet.x * w, bullet.y * h))
