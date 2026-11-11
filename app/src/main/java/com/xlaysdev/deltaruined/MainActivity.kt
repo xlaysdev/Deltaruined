@@ -153,7 +153,14 @@ private fun DeltaruinedGame() {
                     // Pixel-grid arena and boss emblem.
                     for (i in 1..11) drawLine(Color(0xFF202034), Offset(w * i / 12f, 0f), Offset(w * i / 12f, h), 1f)
                     drawCircle(boss.color.copy(alpha = .12f), w * .12f, Offset(w * .5f, h * .25f))
-                    drawCircle(boss.color, w * .045f, Offset(w * .5f, h * .25f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4f))
+                    with(PixelSprites) {
+                        drawSprite(
+                            rows = bosses[selected],
+                            center = Offset(w * .5f, h * .25f),
+                            pixel = (w / 27f).coerceAtMost(h / 25f),
+                            palette = palettes[selected]
+                        )
+                    }
                     drawRect(Color.White, topLeft = Offset(w * .12f, h * .48f), size = Size(w * .76f, h * .44f), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3f))
                     bullets.forEach { b ->
                         drawCircle(boss.color, b.radius, Offset(b.x * w, b.y * h))
@@ -161,10 +168,11 @@ private fun DeltaruinedGame() {
                     }
                     if (turn % 2 == 1) {
                         val p = Offset(soul.x * w, soul.y * h)
-                        val path = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(p.x, p.y - 12f); lineTo(p.x + 10f, p.y); lineTo(p.x, p.y + 12f); lineTo(p.x - 10f, p.y); close()
+                        if (invulnerable % 4 < 2) {
+                            with(PixelSprites) {
+                                drawSprite(soul, p, pixel = 1.35f, palette = mapOf('R' to SoulRed))
+                            }
                         }
-                        if (invulnerable % 4 < 2) drawPath(path, SoulRed)
                     }
                 }
                 if (turn % 2 == 0) {
